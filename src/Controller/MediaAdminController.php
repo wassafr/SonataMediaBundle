@@ -20,6 +20,7 @@ use Symfony\Component\Form\FormRenderer;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
 class MediaAdminController extends Controller
 {
@@ -138,5 +139,79 @@ class MediaAdminController extends Controller
         }
 
         $twig->getRuntime(FormRenderer::class)->setTheme($formView, $theme);
+    }
+
+    /**
+     * Returns the response object associated with the browser action.
+     *
+     * @return Response
+     *
+     * @throws AccessDeniedException
+     */
+    public function browserAction()
+    {
+        if (false === $this->admin->isGranted('LIST')) {
+            throw new AccessDeniedException();
+        }
+
+        $datagrid = $this->admin->getDatagrid();
+        $datagrid->setValue('context', null, $this->admin->getPersistentParameter('context'));
+        $datagrid->setValue('providerName', null, $this->admin->getPersistentParameter('provider'));
+
+        // Store formats
+        $formats = array();
+        foreach ($datagrid->getResults() as $media) {
+            $formats[$media->getId()] = $this->get('sonata.media.pool')->getFormatNamesByContext($media->getContext());
+        }
+
+        $formView = $datagrid->getForm()->createView();
+
+        // set the theme for the current Admin Form
+        $this->setFormTheme($formView, $this->admin->getFilterTheme());
+
+        return $this->render('@SonataMedia/MediaAdmin/browser.html.twig', array(
+            'action' => 'browser',
+            'form' => $formView,
+            'datagrid' => $datagrid,
+            'formats' => $formats,
+            'base_template' => '@SonataMedia/MediaAdmin/layout.html.twig',
+        ));
+    }
+
+    /**
+     * Returns the response object associated with the upload action.
+     *
+     * @return Response
+     *
+     * @throws AccessDeniedException
+     */
+    public function uploadAction()
+    {
+        if (false === $this->admin->isGranted('CREATE')) {
+            throw new AccessDeniedException();
+        }
+
+        $mediaManager = $this->get('sonata.media.manager.media');
+
+        $request = $this->getRequest();
+        $provider = $request->get('provider');
+        $file = $request->files->get('upload');
+
+        if (!$request->isMethod('POST') || !$provider || null === $file) {
+            throw $this->createNotFoundException();
+        }
+
+        $context = $request->get('context', $this->get('sonata.media.pool')->getDefaultContext());
+
+        $media = $mediaManager->create();
+        $media->setBinaryContent($file);
+
+        $mediaManager->save($media, $context, $provider);
+        $this->admin->createObjectSecurity($media);
+
+        return $this->render('@SonataMedia/MediaAdmin/upload.html.twig', array(
+            'action' => 'list',
+            'object' => $media,
+        ));
     }
 }

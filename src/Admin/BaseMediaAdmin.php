@@ -15,6 +15,7 @@ use Sonata\AdminBundle\Admin\AbstractAdmin;
 use Sonata\AdminBundle\Datagrid\ListMapper;
 use Sonata\AdminBundle\Form\FormMapper;
 use Sonata\AdminBundle\Form\Type\ModelListType;
+use Sonata\AdminBundle\Route\RouteCollection;
 use Sonata\CoreBundle\Model\Metadata;
 use Sonata\MediaBundle\Form\DataTransformer\ProviderDataTransformer;
 use Sonata\MediaBundle\Model\CategoryManagerInterface;
@@ -202,5 +203,15 @@ abstract class BaseMediaAdmin extends AbstractAdmin
                 ],
             ]);
         }
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+
+    protected function configureRoutes(RouteCollection $collection)
+    {
+        $collection->add('browser', 'browser');
+        $collection->add('upload', 'upload');
     }
 }
